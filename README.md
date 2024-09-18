@@ -70,7 +70,7 @@ pip install -i https://test.pypi.org/simple/ SMART-MRS==3
 
 ## Usage
 Below are example uses of functions from each module in **SMART_MRS**.
-For further information on specific functions, please consult: LINK_TO_READ_THE_DOCS
+For further information on specific functions, please consult SupplementaryMaterial.txt
 
 ```python
 import SMART_MRS
