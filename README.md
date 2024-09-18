@@ -67,18 +67,16 @@ Below are example uses of functions from each module in **SMART_MRS**.
 For further information on specific functions, please consult: LINK_TO_READ_THE_DOCS
 
 ```python
-import SMART_MRS
+from SMART_MRS
 
 # IO Functions example get_nifti_mrs_data() - returns FIDs, time, and ppm
-fids, time, ppm = SMART_MRS.get_nifti_mrs_data(dir_nifti="C:/Users/FIDA/MyNiftiMRSFile.nii.gz")
-
-# Support Functions example interleave() - returns FIDs [interleaved with 'ON' first]
-fids = SMART_MRS.interleave(fids_on=fids[0, :, :], fids_off=fids[1, :, :])
+dir = "C:/Users/"
+fids, time, ppm = SMART_MRS.IO.get_nifti_mrs_data(dir_nifti=dir+"jdifference_nifti_SMART_MRS_EX.nii.gz")
 
 # Artifacts Functions example add_nuisance_peak() 
 # - returns FIDs and artifact locations within dataset
 
-# apply specific user values
+# Apply specific user values
 gaussian_peak_profile = {
     "peak_type": "G",
     "amp": [0.00015],
@@ -86,10 +84,14 @@ gaussian_peak_profile = {
     "res_freq": [4],
     "edited": 1.4}
 
-# when echo is True, will print non-user specified values used (in this case, the locations of the artifacts)
-fids, np_locations = SMART_MRS.add_nuisance_peak(fids=fids, time=time, peak_profile=gaussian_peak_profile, num_trans=3, echo=True)
+# When echo is True, will print non-user specified values used (in this case, the locations of the artifacts)
+fids, np_locations = SMART_MRS.artifacts.add_nuisance_peak(fids=fids, time=time, peak_profile=gaussian_peak_profile, num_trans=3, echo=True)
 
 # Applied Functions example add_disruptive_motion_artifact() - returns FIDs and artifact locations within dataset
 # use function specific values
-fids, motion_locations = SMART_MRS.add_disruptive_motion_artifact(fids=fids, time=time, ppm=ppm, mot_locs=[3, 52], nmb_motion=2)
+fids, motion_locations = SMART_MRS.applied.add_disruptive_motion_artifact(fids=fids, time=time, ppm=ppm, mot_locs=[3, 9], nmb_motion=2)
+
+# Save Fids with Artifacts as original data type
+# New nifti should be saved under same name "_SMART.niigz" at same location
+SMART_MRS.IO.return_nifti_mrs_data(dir_nifti=dir+"jdifference_nifti_SMART_MRS_EX.nii.gz", fids=fids, edited=True)
 ```
