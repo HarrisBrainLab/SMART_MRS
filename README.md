@@ -46,19 +46,25 @@ The **SMART_MRS** package contains 4 modules:
 
 ## Dependencies
 Each of the 4 modules have relative dependencies in addition to the following dependencies:
-* JSON
-* Math
 * Nibabel (v.5.2.1)
 * NumPy (v.1.25.2)
-* Random
 * SciPy (v.1.11.4)
 
 
-## Installation
-Use pip package manager to install the **SMART_MRS** library as below:
-
+## SMART_MRS Installation Guide
+Download the environment configuration file and create a conda environment:
 ```bash
-pip install SMART_MRS
+conda env create -f smart_env.yml
+```
+
+Activate smart_env environment
+```bash
+conda activate smart_env
+```
+
+Use pip package manager to install the **SMART_MRS** library as below:
+```bash
+pip install -i https://test.pypi.org/simple/ SMART-MRS==3
 ```
 
 
@@ -67,15 +73,16 @@ Below are example uses of functions from each module in **SMART_MRS**.
 For further information on specific functions, please consult: LINK_TO_READ_THE_DOCS
 
 ```python
-from SMART_MRS
+import SMART_MRS
 
 # IO Functions example get_nifti_mrs_data() - returns FIDs, time, and ppm
 dir = "C:/Users/"
 fids, time, ppm = SMART_MRS.IO.get_nifti_mrs_data(dir_nifti=dir+"jdifference_nifti_SMART_MRS_EX.nii.gz")
 
-# Artifacts Functions example add_nuisance_peak() 
-# - returns FIDs and artifact locations within dataset
+# Support Functions example scale() - returns scaled FIDs and scale factor
+fids, nifti_scale = SMART_MRS.support.scale(fids)
 
+# Artifacts Functions example add_nuisance_peak() - returns FIDs and artifact locations within dataset
 # Apply specific user values
 gaussian_peak_profile = {
     "peak_type": "G",
@@ -93,5 +100,6 @@ fids, motion_locations = SMART_MRS.applied.add_disruptive_motion_artifact(fids=f
 
 # Save Fids with Artifacts as original data type
 # New nifti should be saved under same name "_SMART.niigz" at same location
+fids = SMART_MRS.support.undo_scale(fids=fids, scale_fact=nifti_scale)
 SMART_MRS.IO.return_nifti_mrs_data(dir_nifti=dir+"jdifference_nifti_SMART_MRS_EX.nii.gz", fids=fids, edited=True)
 ```
