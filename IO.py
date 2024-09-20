@@ -41,7 +41,7 @@ def get_FIDA_mat_data(dir_mat, struct_name):
     for ii in range (0, sims.shape[1]):
         fids.append(sims[0, ii][0])
     time = np.squeeze(sims[0,0][1])
-    ppm = np.squeeze(sims[0,0][2])
+    ppm = np.squeeze(sims[0,0][2])[::-1]
 
     return np.squeeze(np.array(fids)), time, ppm
 
@@ -60,14 +60,17 @@ def return_FIDA_mat_data(dir_mat, struct_name, fids):
     # save existing .mat file with new fids
     for ii in range (0, sims.shape[1]):
         sims[0, ii][0] = fids[ii, :, :]
-    sci_io.savemat(dir_mat, {struct_name: sims})
+
+    og_dir = dir_mat.split(".")
+    sci_io.savemat(f"{og_dir[0]}_SMART.mat", {struct_name: sims})
 
 
-def get_nifti_mrs_data(dir_nifti):
+def get_nifti_mrs_data(dir_nifti, cf=4.65):
     '''
     Load single voxel FIDs from an existing nifti-mrs file (assumes standard dimension naming conventions as per Clarke et al. 2022
     where data is already coil combined)(dim_6 (DIM_DYN), dim_7 (DIM_EDIT))
     :param:     dir_nifti (string): directory and nifti-mrs filename (i.e. "C:/Users/FIDA/MyNiftiFile.nii.gz")
+                cf (float): center frequency in ppm (assumed 4.65)
     :return:    fids (dictionary of complex floats): free induction decay values of shape [num_samples, spec_points] 
                 time (float): vector containing time values [spec_points]
                 ppm (float): vector containing ppm values [spec_points] 
@@ -90,9 +93,11 @@ def get_nifti_mrs_data(dir_nifti):
         return False
 
     # obtained by going from +ve to -ve bandwidth (of length = number of spec points) divided by the central frequency
-    freq = np.linspace((1 / nifti_header['pixdim'][4]) / 2, -(1 / nifti_header['pixdim'][4]) / 2, nifti.shape[3])
-    ppm = 4.65 + freq / json_header['SpectrometerFrequency'][0]  # change if center frequency is not 4.65
-    time = 1 / freq
+    spec_points = nifti.shape[3]
+    dwtime = nifti_header['pixdim'][4]
+    freq = np.linspace(start=(-(1/dwtime)/2) + ((1/dwtime)/(2*spec_points)), stop=((1/dwtime)/2) - ((1/dwtime)/(2*spec_points)), num=spec_points)[::-1]
+    ppm = (-freq / json_header['SpectrometerFrequency'][0]) + cf                # in some GABA synthetic data 3 is used
+    time = np.linspace(start=0, stop=(spec_points-1)*dwtime, num=spec_points)
 
     # check for existence of dimensions 5-7
     if 'dim_5' in json_header:

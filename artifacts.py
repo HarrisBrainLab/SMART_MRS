@@ -76,7 +76,7 @@ def add_spur_echo_artifact(fids, time, amp=None, lf=127, cs=None, phase=None, ts
         func_def.append(f'Locations: {gs_locs}')
 
     if tstart is None or len(tstart)!=nmb_sps:
-        tstart = np.random.uniform(600, 900, size=nmb_sps)
+        tstart = np.random.uniform(450, (np.max(time)*1e+03)-200, size=nmb_sps)
         func_def.append(f'Start Times: {tstart}')
 
     if (tfinish is None) or (len(tfinish)!=nmb_sps) or (any(np.array(tstart) >= np.array(tfinish))): 
@@ -441,7 +441,7 @@ def add_freq_drift_linear(fids, time, freq_offset_var=None, freq_shift=None, sta
     end_trans = start_trans+num_trans
     slope = np.linspace(start=freq_shift/num_trans, stop=freq_shift, num=num_trans)
     f_shift_linear = np.random.normal(0, freq_offset_var, size=num_trans) + slope
-    f_shift_linear = f_shift_linear[:, np.newaxis].repeat(2048, axis=1)
+    f_shift_linear = f_shift_linear[:, np.newaxis].repeat(fids.shape[1], axis=1)
     time = time[np.newaxis, :].repeat(num_trans, axis=0)
 
     # insert frequency drift
