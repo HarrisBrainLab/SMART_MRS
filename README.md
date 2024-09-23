@@ -2,7 +2,7 @@
 **SMART_MRS** is a Python based library (toolbox) for applying 
 simulated artifacts to edited Magnetic Resonance Spectroscopy (MRS) data.
 
-For further information on the toolbox, please see LINK_TO_PREPRINT
+For further information on the toolbox, please see [SMART_MRS Preprint](https://www.biorxiv.org/content/10.1101/2024.09.19.612894v1)
 
 
 ## Updates
@@ -64,7 +64,7 @@ conda activate smart_env
 
 Use pip package manager to install the **SMART_MRS** library as below:
 ```bash
-pip install -i https://test.pypi.org/simple/ SMART-MRS==3
+pip install 
 ```
 
 
