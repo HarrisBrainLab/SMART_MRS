@@ -64,7 +64,7 @@ conda activate smart_env
 
 Use pip package manager to install the **SMART_MRS** library as below:
 ```bash
-pip install 
+pip install SMART-MRS==1
 ```
 
 
