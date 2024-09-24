@@ -3,7 +3,7 @@
 simulated artifacts to edited Magnetic Resonance Spectroscopy (MRS) data.
 
 For further information on the toolbox, please see [SMART_MRS Preprint](https://www.biorxiv.org/content/10.1101/2024.09.19.612894v1)
-
+For further information on the pip installable, please see [SMART_MRS pip installable](https://pypi.org/project/SMART-MRS/1/)
 
 ## Updates
 Current version is 1.0 with no preceding versions.
