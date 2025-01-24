@@ -23,7 +23,9 @@ import nibabel as nib
 # import functions from support module
 from .support import interleave, undo_interleave
 
-# IO module functions
+########################################################################################################################
+# IO Functions
+########################################################################################################################
 def get_FIDA_mat_data(dir_mat, struct_name):
     '''
     Load FIDs from an existing MATLAB .mat FID-A struct (will need to perform for x number of subspectra)
@@ -60,7 +62,7 @@ def return_FIDA_mat_data(dir_mat, struct_name, fids):
     # save existing .mat file with new fids
     for ii in range (0, sims.shape[1]):
         sims[0, ii][0] = fids[ii, :, :]
-
+    
     og_dir = dir_mat.split(".")
     sci_io.savemat(f"{og_dir[0]}_SMART.mat", {struct_name: sims})
 
@@ -75,17 +77,18 @@ def get_nifti_mrs_data(dir_nifti, cf=4.65):
                 time (float): vector containing time values [spec_points]
                 ppm (float): vector containing ppm values [spec_points] 
     '''
+    fids, fids_on, fids_off = [], [], []
     dim5, dim6, dim7 = 'NOT_ASSIGNED', 'NOT_ASSIGNED', 'NOT_ASSIGNED'
-    spec_points_dim = 1  # existing spec points dim
-    unused_dims = 3  # voxel location dims (assumed single voxel, unsused)
+    spec_points_dim = 1                         # existing spec points dim
+    unused_dims = 3                             # voxel location dims (assumed single voxel, unsused)
+    
 
     # open nifti-mrs file
     nifti_load = nib.load(dir_nifti)
     nifti = nifti_load.get_fdata(dtype=np.complex64)
     og_num_dims = nifti.ndim
     nifti_header = nifti_load.header
-    json_header = json.loads(
-        nifti_load.header.extensions[nifti_load.header.extensions.get_codes().index(44)].get_content())
+    json_header = json.loads(nifti_load.header.extensions[nifti_load.header.extensions.get_codes().index(44)].get_content())
 
     # check if single voxel
     if nifti.shape[0] > 1 or nifti.shape[1] > 1 or nifti.shape[2] > 1:
@@ -95,8 +98,8 @@ def get_nifti_mrs_data(dir_nifti, cf=4.65):
     # obtained by going from +ve to -ve bandwidth (of length = number of spec points) divided by the central frequency
     spec_points = nifti.shape[3]
     dwtime = nifti_header['pixdim'][4]
-    freq = np.linspace(start=(-(1/dwtime)/2) + ((1/dwtime)/(2*spec_points)), stop=((1/dwtime)/2) - ((1/dwtime)/(2*spec_points)), num=spec_points)[::-1]
-    ppm = (-freq / json_header['SpectrometerFrequency'][0]) + cf                # in some GABA synthetic data 3 is used
+    freq = np.linspace(start=(-(1/dwtime)/2) + ((1/dwtime)/(2*spec_points)), stop=((1/dwtime)/2) - ((1/dwtime)/(2*spec_points)), num=spec_points)
+    ppm = (-freq / json_header['SpectrometerFrequency'][0])+ cf
     time = np.linspace(start=0, stop=(spec_points-1)*dwtime, num=spec_points)
 
     # check for existence of dimensions 5-7
@@ -112,7 +115,7 @@ def get_nifti_mrs_data(dir_nifti, cf=4.65):
         dim7 = json_header['dim_7']
         if og_num_dims == 7:
             nifti = nifti[0, 0, 0, :, :, :, :]
-
+        
     all_dims = ["DIM_SPEC_POINTS", dim5, dim6, dim7, "NOT_ASSIGNED_EXTRA"]
 
     # check which dimension has coils
@@ -120,48 +123,46 @@ def get_nifti_mrs_data(dir_nifti, cf=4.65):
         coil_ind = all_dims.index("DIM_COIL")
 
         # make sure coil dimension is 1 and remove from list
-        if nifti.shape[int(coil_ind)] > 1 or coil_ind > 1:  # coil index is not first (after spec points)
+        if nifti.shape[int(coil_ind)]>1 or coil_ind>1:                    # coil index is not first (after spec points)
             print('Coils need to be combined prior to using this function and must be DIM_5.')
             return False
     else:
-        coil_ind = len(all_dims) - 1
+        coil_ind = len(all_dims)-1
 
     # check which dimension has averages
     if 'DIM_DYN' in all_dims:
         avgs_ind = all_dims.index("DIM_DYN")
     else:
-        avgs_ind = len(all_dims) - 1
-
+        avgs_ind = len(all_dims)-1
+    
     # check which dimension has editing
     if 'DIM_EDIT' in all_dims:
         edit_ind = all_dims.index("DIM_EDIT")
-        edit_cond = json_header[f'dim_{int(unused_dims + spec_points_dim + edit_ind)}_header']['EditCondition'][0]
+        edit_cond = json_header[f'dim_{int(unused_dims+spec_points_dim+edit_ind)}_header']['EditCondition'][0]
     else:
-        edit_ind = len(all_dims) - 1
-        edit_cond = len(all_dims) - 1
+        edit_ind = len(all_dims)-1
+        edit_cond = len(all_dims)-1
 
-    if len(list(set(all_dims) - {"DIM_COIL", "DIM_DYN", "DIM_EDIT", "DIM_SPEC_POINTS", "NOT_ASSIGNED",
-                                 "NOT_ASSIGNED_EXTRA"})) > 0:
-        print(
-            "Custom coil dimensions are not permitted with this function. Dimensions must be named 'DIM_COIL', 'DIM_EDIT', and/or 'DIM_DYN'.")
+    if len(list(set(all_dims) - {"DIM_COIL", "DIM_DYN", "DIM_EDIT", "DIM_SPEC_POINTS", "NOT_ASSIGNED", "NOT_ASSIGNED_EXTRA"}))>0:
+        print("Custom coil dimensions are not permitted with this function. Dimensions must be named 'DIM_COIL', 'DIM_EDIT', and/or 'DIM_DYN'.")
         return False
 
     # assign correct order of values to FIDs
     # spectral points only
-    if og_num_dims == 4:
+    if og_num_dims==4:
         fids = nifti[0, 0, 0, :][np.newaxis, :]
         fids_on, fids_off = [], []
-
+    
     # five total dimensions
-    elif og_num_dims == 5:
+    elif og_num_dims==5:
 
         # num averages or coil combined only
         if dim5 == all_dims[int(avgs_ind)] or dim5 == all_dims[int(coil_ind)]:
             fids = np.transpose(nifti[:, :])
             fids_on, fids_off = [], []
-
+        
         # subspectra only (ON first)
-        elif dim5 == all_dims[int(edit_ind)] and edit_cond == 'ON':
+        elif dim5 == all_dims[int(edit_ind)] and edit_cond=='ON':
             fids_on = np.transpose(nifti[:, 0])
             fids_off = np.transpose(nifti[:, 1])
 
@@ -169,9 +170,9 @@ def get_nifti_mrs_data(dir_nifti, cf=4.65):
         else:
             fids_on = np.transpose(nifti[:, 1])
             fids_off = np.transpose(nifti[:, 0])
-
+    
     # six total dimensions
-    elif og_num_dims == 6:
+    elif og_num_dims==6:
 
         # coil combined first in sequence
         if dim5 == all_dims[int(coil_ind)]:
@@ -179,10 +180,10 @@ def get_nifti_mrs_data(dir_nifti, cf=4.65):
             if dim6 == all_dims[int(avgs_ind)]:
                 fids = np.transpose(nifti[:, 0, :])
                 fids_on, fids_off = [], []
-
+            
             # subspectra second in sequence
             # subspectra (ON first)
-            elif dim6 == all_dims[int(edit_ind)] and edit_cond == 'ON':
+            elif dim6 == all_dims[int(edit_ind)] and edit_cond=='ON':
                 fids_on = np.transpose(nifti[:, 0, 0])
                 fids_off = np.transpose(nifti[:, 0, 1])
 
@@ -195,48 +196,48 @@ def get_nifti_mrs_data(dir_nifti, cf=4.65):
         elif dim5 == all_dims[int(avgs_ind)]:
 
             # subspectra (ON first)
-            if edit_cond == 'ON':
+            if edit_cond=='ON':
                 fids_on = np.transpose(nifti[:, :, 0])
                 fids_off = np.transpose(nifti[:, :, 1])
-
+            
             # subspectra (OFF first)
             else:
                 fids_on = np.transpose(nifti[:, :, 1])
                 fids_off = np.transpose(nifti[:, :, 0])
-
+        
         # subspectra first and num averages second in sequence
         # subspectra (ON first)
-        elif dim5 == all_dims[int(edit_ind)] and edit_cond == 'ON':
+        elif dim5 == all_dims[int(edit_ind)] and edit_cond=='ON':
             fids_on = np.transpose(nifti[:, 0, :])
             fids_off = np.transpose(nifti[:, 1, :])
-
+        
         # subspectra (OFF first)
         else:
             fids_on = np.transpose(nifti[:, 1, :])
             fids_off = np.transpose(nifti[:, 0, :])
-
+    
     # seven total dimensions (coil combined first dimension)
-    elif og_num_dims == 7:
+    elif og_num_dims==7:
 
         # num averages second and subspectra third in sequence
         if dim6 == all_dims[int(avgs_ind)]:
 
             # subspectra (ON first)
-            if dim7 == all_dims[int(edit_ind)] and edit_cond == 'ON':
+            if dim7 == all_dims[int(edit_ind)] and edit_cond=='ON':
                 fids_on = np.transpose(nifti[:, 0, :, 0])
                 fids_off = np.transpose(nifti[:, 0, :, 1])
-
+            
             # subspectra (OFF first)
             else:
                 fids_on = np.transpose(nifti[:, 0, :, 1])
                 fids_off = np.transpose(nifti[:, 0, :, 0])
-
+        
         # subspectra second and num averages third in sequence
         # subspectra (ON first)
-        elif dim6 == all_dims[int(edit_ind)] and edit_cond == 'ON':
+        elif dim6 == all_dims[int(edit_ind)] and edit_cond=='ON':
             fids_on = np.transpose(nifti[:, 0, 0, :])
             fids_off = np.transpose(nifti[:, 0, 1, :])
-
+        
         # subspectra (OFF first)
         else:
             fids_on = np.transpose(nifti[:, 0, 1, :])
@@ -256,20 +257,20 @@ def get_nifti_mrs_data(dir_nifti, cf=4.65):
         print('dim_5 (DIM_COIL) [SIZE = 1], dim_6 (DIM_EDIT), dim_7 (DIM_DYN);')
 
     # interleave fids for ease of use
-    if list(fids_on):  # check if fids_on is empty and that samples exist
-        if fids_on.ndim == 1:  # single pair of trans
+    if list(fids_on):                                               # check if fids_on is not empty and that samples exist
+        if fids_on.ndim==1:                                         # single pair of trans
             fids = interleave(fids_off=fids_off[np.newaxis, :], fids_on=fids_on[np.newaxis, :])
             print('Nifti accepted - Interleaving subspectra...')
-        if fids_on.ndim == 2:
+        if fids_on.ndim==2:
             fids = interleave(fids_off=fids_off, fids_on=fids_on)
             print('Nifti accepted - Interleaving subspectra...')
 
-    return fids, time, ppm
+    return  fids, time, ppm
 
 
 def return_nifti_mrs_data(dir_nifti, fids, edited=True):
     '''
-    Returns single voxel FIDs to a new nifti-mrs file (with existing header)
+    Returns single voxel FIDs to a new nifti-mrs file (with existing header) 
     (assumes standard dimension naming conventions as per Clarke et al. 2022 where data is already coil combined)
     (dim_6 (DIM_DYN), dim_7 (DIM_EDIT))
     :param:     dir_nifti (string): directory and nifti-mrs filename (i.e. "C:/Users/FIDA/MyNiftiFile.nii.gz")
@@ -277,8 +278,8 @@ def return_nifti_mrs_data(dir_nifti, fids, edited=True):
                 edited (boolean): indicates whether the scan is edited (designated by True)
     '''
     dim5, dim6, dim7 = 'NOT_ASSIGNED', 'NOT_ASSIGNED', 'NOT_ASSIGNED'
-    spec_points_dim = 1  # existing spec points dim
-    unused_dims = 3  # voxel location dims (assumed single voxel, unsused)
+    spec_points_dim = 1                         # existing spec points dim
+    unused_dims = 3                             # voxel location dims (assumed single voxel, unsused)
     final_fids = []
 
     # check fid dimension
@@ -299,7 +300,7 @@ def return_nifti_mrs_data(dir_nifti, fids, edited=True):
         dim6 = json_header['dim_6']
     if 'dim_7' in json_header:
         dim7 = json_header['dim_7']
-
+        
     all_dims = ["DIM_SPEC_POINTS", dim5, dim6, dim7, "NOT_ASSIGNED_EXTRA"]
 
     # check which dimension has coils
@@ -307,25 +308,25 @@ def return_nifti_mrs_data(dir_nifti, fids, edited=True):
         coil_ind = all_dims.index("DIM_COIL")
 
         # make sure coil dimension is 1 and remove from list
-        if nifti.shape[int(coil_ind)] > 1 or coil_ind > 1:  # coil index is not first (after spec points)
+        if nifti.shape[int(coil_ind)]>1 or coil_ind>1:                    # coil index is not first (after spec points)
             print('Coils need to be combined prior to using this function and must be DIM_5.')
             return False
     else:
-        coil_ind = len(all_dims) - 1
+        coil_ind = len(all_dims)-1
 
     # check which dimension has averages
     if 'DIM_DYN' in all_dims:
         avgs_ind = all_dims.index("DIM_DYN")
     else:
-        avgs_ind = len(all_dims) - 1
-
+        avgs_ind = len(all_dims)-1
+    
     # check which dimension has editing
     if 'DIM_EDIT' in all_dims:
         edit_ind = all_dims.index("DIM_EDIT")
-        edit_cond = json_header[f'dim_{int(unused_dims + spec_points_dim + edit_ind)}_header']['EditCondition'][0]
+        edit_cond = json_header[f'dim_{int(unused_dims+spec_points_dim+edit_ind)}_header']['EditCondition'][0]
     else:
-        edit_ind = len(all_dims) - 1
-        edit_cond = len(all_dims) - 1
+        edit_ind = len(all_dims)-1
+        edit_cond = len(all_dims)-1
 
     # assign values to correct dimension
     # acquisition is edited
@@ -336,46 +337,46 @@ def return_nifti_mrs_data(dir_nifti, fids, edited=True):
         fids_on, fids_off = np.transpose(fids_on), np.transpose(fids_off)
 
         # five total dimensions
-        if og_num_dims == 5:
+        if og_num_dims==5:
             final_fids = np.zeros(shape=(fids_on.shape[0], 2), dtype=complex)
 
             # subspectra dimension (ON first) (Assumes single ON and OFF transient)
-            if dim5 == all_dims[int(edit_ind)] and edit_cond == 'ON':
-                fids_on, fids_off = np.squeeze(fids_on), np.squeeze(fids_off)
+            if dim5 == all_dims[int(edit_ind)] and edit_cond=='ON':    
+                fids_on, fids_off = np.squeeze(fids_on), np.squeeze(fids_off)       
                 final_fids[:, 0], final_fids[:, 1] = fids_on, fids_off
-
+            
             # subspectra (OFF first) (Assumes single ON and OFF transient)
             else:
-                fids_on, fids_off = np.squeeze(fids_on), np.squeeze(fids_off)
+                fids_on, fids_off = np.squeeze(fids_on), np.squeeze(fids_off)     
                 final_fids[:, 0], final_fids[:, 1] = fids_off, fids_on
 
             final_fids = final_fids[np.newaxis, np.newaxis, np.newaxis, :, :]
 
         # six total dimensions
-        elif og_num_dims == 6:
-
+        elif og_num_dims==6:
+    
             # coil dimension present first in sequence and subspectra second in sequence
-            if dim5 == all_dims[int(coil_ind)]:
+            if dim5 == all_dims[int(coil_ind)]:     
                 final_fids = np.zeros(shape=(fids_on.shape[0], 1, 2), dtype=complex)
 
                 # subspectra (ON first)
-                if dim6 == all_dims[int(edit_ind)] and edit_cond == 'ON':
-                    fids_on, fids_off = np.squeeze(fids_on), np.squeeze(fids_off)
+                if dim6 == all_dims[int(edit_ind)] and edit_cond=='ON':
+                    fids_on, fids_off = np.squeeze(fids_on), np.squeeze(fids_off)     
                     final_fids[:, 0, 0], final_fids[:, 0, 1] = fids_on, fids_off
-
+                
                 # subspectra (OFF first)
                 else:
-                    fids_on, fids_off = np.squeeze(fids_on), np.squeeze(fids_off)
+                    fids_on, fids_off = np.squeeze(fids_on), np.squeeze(fids_off)     
                     final_fids[:, 0, 0], final_fids[:, 0, 1] = fids_off, fids_on
-
+            
             # num averages first in sequence and subspectra second in sequence
             elif dim5 == all_dims[int(avgs_ind)]:
                 final_fids = np.zeros(shape=(fids_on.shape[0], fids_on.shape[1], 2), dtype=complex)
 
                 # subspectra (ON first) second in sequence
-                if edit_cond == 'ON':
+                if edit_cond=='ON':
                     final_fids[:, :, 0], final_fids[:, :, 1] = fids_on, fids_off
-
+                
                 # subspectra (OFF first) second in sequence
                 else:
                     final_fids[:, :, 0], final_fids[:, :, 1] = fids_off, fids_on
@@ -385,9 +386,9 @@ def return_nifti_mrs_data(dir_nifti, fids, edited=True):
                 final_fids = np.zeros(shape=(fids_on.shape[0], 2, fids_on.shape[1]), dtype=complex)
 
                 # subspectra (ON first)
-                if dim5 == all_dims[int(edit_ind)] and edit_cond == 'ON':
+                if dim5 == all_dims[int(edit_ind)] and edit_cond=='ON':
                     final_fids[:, 0, :], final_fids[:, 1, :] = fids_on, fids_off
-
+            
                 # subspectra (OFF first)
                 else:
                     final_fids[:, 0, :], final_fids[:, 1, :] = fids_off, fids_on
@@ -395,18 +396,18 @@ def return_nifti_mrs_data(dir_nifti, fids, edited=True):
             final_fids = final_fids[np.newaxis, np.newaxis, np.newaxis, :, :, :]
 
         # seven total dimensions (coil dimension must be present)
-        elif og_num_dims == 7:
+        elif og_num_dims==7:
 
             # coil dimension first, num averages second, and subspectra third in sequence
-            if dim6 == all_dims[int(avgs_ind)]:
+            if dim6 == all_dims[int(avgs_ind)]: 
                 final_fids = np.zeros(shape=(fids_on.shape[0], 1, fids_on.shape[1], 2), dtype=complex)
-
+            
                 # subspectra (ON first)
-                if dim7 == all_dims[int(edit_ind)] and edit_cond == 'ON':
+                if dim7 == all_dims[int(edit_ind)] and edit_cond=='ON':   
                     final_fids[:, 0, :, 0], final_fids[:, 0, :, 1] = fids_on, fids_off
 
                 # subspectra (OFF first)
-                else:
+                else: 
                     final_fids[:, 0, :, 0], final_fids[:, 0, :, 1] = fids_off, fids_on
 
 
@@ -415,24 +416,24 @@ def return_nifti_mrs_data(dir_nifti, fids, edited=True):
                 final_fids = np.zeros(shape=(fids_on.shape[0], 1, 2, fids_on.shape[1]), dtype=complex)
 
                 # subspectra (ON first)
-                if dim6 == all_dims[int(edit_ind)] and edit_cond == 'ON':
+                if dim6 == all_dims[int(edit_ind)] and edit_cond=='ON':   
                     final_fids[:, 0, 0, :], final_fids[:, 0, 1, :] = fids_on, fids_off
 
                 # subspectra (OFF first)
-                else:
-                    final_fids[:, 0, 0, :], final_fids[:, 0, 1, :] = fids_off, fids_on
+                else:     
+                    final_fids[:, 0, 0, :], final_fids[:, 0, 1, :] = fids_off, fids_on        
 
             final_fids = final_fids[np.newaxis, np.newaxis, np.newaxis, :, :, :, :]
 
     # acquisition is NOT edited
     else:
         # num averages only or coil combined only
-        if og_num_dims == 5 and (dim5 == all_dims[int(avgs_ind)] or dim5 == all_dims[int(coil_ind)]):
+        if og_num_dims==5 and (dim5 == all_dims[int(avgs_ind)] or dim5 == all_dims[int(coil_ind)]):
             final_fids = np.transpose(fids)
             final_fids = final_fids[np.newaxis, np.newaxis, np.newaxis, :, :]
 
         # coil combined (dim5) and num averages (dim6)
-        elif og_num_dims == 6 and dim5 == all_dims[int(coil_ind)] and dim6 == all_dims[int(avgs_ind)]:
+        elif og_num_dims==6 and dim5 == all_dims[int(coil_ind)] and dim6 == all_dims[int(avgs_ind)]:
             final_fids = np.zeros(shape=(fids.shape[1], 1, fids.shape[0]), dtype=complex)
             final_fids[:, 0, :] = np.transpose(fids)
             final_fids = final_fids[np.newaxis, np.newaxis, np.newaxis, :, :, :]

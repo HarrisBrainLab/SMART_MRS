@@ -20,7 +20,9 @@ This file can also be imported as a module and contains the following functions:
 import numpy as np
 from scipy.fftpack import fft, ifft, fftshift
 
-# support module functions
+########################################################################################################################
+# Support Functions
+########################################################################################################################
 def to_fids(specs, axis=1):
     '''
     Convert to Fids (time domain)
@@ -105,3 +107,4 @@ def undo_scale(fids, scale_fact):
     '''
     norm_specs = to_specs(fids)*scale_fact
     return to_fids(norm_specs)
+    

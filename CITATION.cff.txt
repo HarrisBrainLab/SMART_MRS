@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "When using the SMART_MRS Toolboxe, please cite it as below."
+authors:
+- family-names: "Bugler"
+  given-names: "Hanna"
+- family-names: "Shamaei"
+  given-names: "Amirmohammad"
+- family-names: "Souza"
+  given-names: "Roberto"
+- family-names: "Harris"
+  given-names: "Ashley D."
+title: "SMART MRS Toolbox "
+version: 2
+doi: 10.1101/2024.09.19.612894
+date-released: 2024-09-25
+url: "https://github.com/HarrisBrainLab/SMART_MRS"
+preferred-citation:
+  type: article
+  authors:
+ - family-names: "Bugler"
+  given-names: "Hanna"
+- family-names: "Shamaei"
+  given-names: "Amirmohammad"
+- family-names: "Souza"
+  given-names: "Roberto"
+- family-names: "Harris"
+  given-names: "Ashley D."
+  doi: 10.1101/2024.09.19.612894		# preprint citation - peer-reviewed journal publication pending
+  journal: "bioRxiv"				
+  month: 9
+  start: 1 					# First page number
+  end: 10 					# Last page number
+  title: "SMART MRS: A Simulated MEGA-PRESS Artifacts Toolbox for GABA-edited MRS "
+  issue: 1
+  volume: 1
+  year: 2024

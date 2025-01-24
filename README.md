@@ -2,11 +2,15 @@
 **SMART_MRS** is a Python based library (toolbox) for applying 
 simulated artifacts to edited Magnetic Resonance Spectroscopy (MRS) data.
 
+MIT License, Copyright (c) 2024 HarrisBrainLab.
+
+Use of SMART_MRS requires citation. Please see either CITATION.cff or GitHub's "Cite this repository".
+
 For further information on the toolbox, please see [SMART_MRS Preprint](https://www.biorxiv.org/content/10.1101/2024.09.19.612894v1)
-For further information on the pip installable, please see [SMART_MRS pip installable](https://pypi.org/project/SMART-MRS/1/)
 
 ## Updates
-Current version is 1.0 with no preceding versions.
+Current version is 2.0. Previous version 1.0.
+See CHANGES.md for more details.
 
 
 ## Module Descriptions
@@ -52,20 +56,27 @@ Each of the 4 modules have relative dependencies in addition to the following de
 
 
 ## SMART_MRS Installation Guide
-Download the environment configuration file and create a conda environment:
+Create an empty Conda environement for installation:
 ```bash
-conda env create -f smart_env.yml
+conda create -n my_smart_mrs_env python=3.11.9 
 ```
 
-Activate smart_env environment
+Activate the Conda environement:
 ```bash
-conda activate smart_env
+conda activate my_smart_mrs_env 
+```
+
+Install pip into your Conda environement:
+```bash
+conda install pip
 ```
 
 Use pip package manager to install the **SMART_MRS** library as below:
 ```bash
-pip install SMART-MRS==1
+python3 -m pip install SMART_MRS
 ```
+
+For more information on the versions of dependencies, please consult the smart_env.yml file.
 
 
 ## Usage
@@ -74,32 +85,82 @@ For further information on specific functions, please consult SupplementaryMater
 
 ```python
 import SMART_MRS
+import matplotlib.pyplot as plt
 
 # IO Functions example get_nifti_mrs_data() - returns FIDs, time, and ppm
-dir = "C:/Users/"
-fids, time, ppm = SMART_MRS.IO.get_nifti_mrs_data(dir_nifti=dir+"jdifference_nifti_SMART_MRS_EX.nii.gz")
+DIR = "C:/Users/"
+fids, time, ppm = SMART_MRS.IO.get_nifti_mrs_data(dir_nifti=f"{DIR}jdifference_nifti_SMART_MRS_EX.nii.gz")
+print(f'Data has {fids.shape[0]} FIDs with {fids.shape[1]} spectral points.')
 
 # Support Functions example scale() - returns scaled FIDs and scale factor
-fids, nifti_scale = SMART_MRS.support.scale(fids)
+raw_scaled_fids, nifti_scale = SMART_MRS.support.scale(fids)
+fids = np.copy(raw_scaled_fids)
 
 # Artifacts Functions example add_nuisance_peak() - returns FIDs and artifact locations within dataset
 # Apply specific user values
 gaussian_peak_profile = {
     "peak_type": "G",
-    "amp": [0.00015],
-    "width": [0.8],    
-    "res_freq": [4],
-    "edited": 1.4}
+    "amp": [0.010, 0.010],
+    "width": [0.85, 0.85],    
+    "res_freq": [1.5, 1.5],
+    "phase": [0, 0],
+    "edited": 1.02
+}
 
 # When echo is True, will print non-user specified values used (in this case, the locations of the artifacts)
-fids, np_locations = SMART_MRS.artifacts.add_nuisance_peak(fids=fids, time=time, peak_profile=gaussian_peak_profile, num_trans=3, echo=True)
+fids, np_locations = SMART_MRS.artifacts.add_nuisance_peak(fids=fids, time=time, peak_profile=gaussian_peak_profile, locs=[0,1], cf_ppm=3, echo=True)
+
+# Plot nuisance peak
+plt.figure(figsize=(10,5))
+plt.suptitle('GABA-Edited Specs Before and After Nuisance Peak Addition')
+
+plt.subplot(121)
+plt.title('Before', fontsize=10)
+plt.plot(ppm[::-1], (SMART_MRS.support.to_specs(raw_scaled_fids)[0, :]-SMART_MRS.support.to_specs(raw_scaled_fids)[1, :]).real, 'black')
+plt.xlabel('ppm')
+plt.xlim(0, 6)
+plt.gca().invert_xaxis()
+
+plt.subplot(122)
+plt.title('After', fontsize=10)
+plt.plot(ppm[::-1], (SMART_MRS.support.to_specs(fids)[0, :]-SMART_MRS.support.to_specs(raw_scaled_fids)[1, :]).real, 'green')
+plt.xlabel('ppm')
+plt.xlim(0, 6)
+plt.gca().invert_xaxis()
+plt.show()
 
 # Applied Functions example add_disruptive_motion_artifact() - returns FIDs and artifact locations within dataset
 # use function specific values
-fids, motion_locations = SMART_MRS.applied.add_disruptive_motion_artifact(fids=fids, time=time, ppm=ppm, mot_locs=[3, 9], nmb_motion=2)
+fids, motion_locations = SMART_MRS.applied.add_disruptive_motion_artifact(fids=fids, time=time, ppm=ppm, locs=[2,3])
+
+# Plot disruptive motion
+plt.figure(figsize=(10,5))
+plt.suptitle('GABA-Edited Specs Before and After Disruptive Artifact')
+
+plt.subplot(121)
+plt.title('Before', fontsize=10)
+plt.plot(ppm[::-1], (SMART_MRS.support.to_specs(raw_scaled_fids)[2, :]-SMART_MRS.support.to_specs(raw_scaled_fids)[3, :]).real, 'black')
+plt.xlabel('ppm')
+plt.xlim(0, 6)
+plt.gca().invert_xaxis()
+
+plt.subplot(122)
+plt.title('After', fontsize=10)
+plt.plot(ppm[::-1], (SMART_MRS.support.to_specs(fids)[2, :]-SMART_MRS.support.to_specs(fids)[3, :]).real, 'blue')
+plt.xlabel('ppm')
+plt.xlim(0, 6)
+plt.gca().invert_xaxis()
+plt.show()
 
 # Save Fids with Artifacts as original data type
 # New nifti should be saved under same name "_SMART.niigz" at same location
 fids = SMART_MRS.support.undo_scale(fids=fids, scale_fact=nifti_scale)
-SMART_MRS.IO.return_nifti_mrs_data(dir_nifti=dir+"jdifference_nifti_SMART_MRS_EX.nii.gz", fids=fids, edited=True)
+SMART_MRS.IO.return_nifti_mrs_data(dir_nifti=f"{DIR}jdifference_nifti_SMART_MRS_EX.nii.gz", fids=fids, edited=True)
 ```
+The above code generates the following plots:
+__Nuisance Peak Example__
+![alt text](https://github.com/HarrisBrainLab/SMART_MRS/plots/NuisancePeakExample.png?raw=true)
+
+
+__Disruptive Motion Example__
+![alt text](https://github.com/HarrisBrainLab/SMART_MRS/plots/DisruptiveMotionExample.png?raw=true)
