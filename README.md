@@ -159,8 +159,8 @@ SMART_MRS.IO.return_nifti_mrs_data(dir_nifti=f"{DIR}jdifference_nifti_SMART_MRS_
 ```
 The above code generates the following plots:
 __Nuisance Peak Example__
-![alt text](https://github.com/HarrisBrainLab/SMART_MRS/plots/NuisancePeakExample.png?raw=true)
+![alt text](https://github.com/HarrisBrainLab/SMART_MRS/NuisancePeakExample.png?raw=true)
 
 
 __Disruptive Motion Example__
-![alt text](https://github.com/HarrisBrainLab/SMART_MRS/plots/DisruptiveMotionExample.png?raw=true)
+![alt text](https://github.com/HarrisBrainLab/SMART_MRS/DisruptiveMotionExample.png?raw=true)
