@@ -12,6 +12,7 @@ This file can also be imported as a module and contains the following functions:
     * add_subtle_motion_artifact - returns FIDs and a list of (integers) transients affected by the frequency and phase shifts [freq. list, phase list]
     * add_disruptive_motion_artifact - returns FIDs and a list of (integers) transients affected by the line broadening and baseline changes
     * add_lipid_artifact - returns FIDs and a list of (integers) transients affected by the nuisance peak
+[last upd. 2025-01]
 """
 
 # import Python packages
@@ -37,7 +38,7 @@ def add_progressive_motion_artifact(fids, time, num_trans=None, echo=False):
     slope_var=15                                                # overall frequency drift to accomplish between first and last transient
     start_trans=int(fids.shape[0]/4)                            # number of transient to start at
 
-    if num_trans is None:                              # number of affected transients
+    if num_trans is None:                                       # number of affected transients
         num_trans = np.random.uniform(5, fids.shape[0]-start_trans)
 
     fids, locs = add_freq_drift_linear(fids=fids, time=time, freq_offset_var=off_var, freq_shift=slope_var, start_trans=start_trans, num_trans=num_trans, echo=echo)

@@ -3,10 +3,9 @@ SMART_MRS Artifact Simulation Toolbox by Hanna Bugler, Amirmohammad Shamaei, Rob
 To generate transients with commonly occuring artifacts from simulated ground truths
 Default function parameter values are written for normalized frequency domain spectra
 Artifact Functions: L18-L696, Applied Functions: L697-L811, IO Functions: L812-L1241, Support Functions: L1242-eod
-[last upd. 2025-01-24]
+[last upd. 2025-03-13]
 """
 
-import math
 import random
 import json
 import numpy as np
@@ -31,7 +30,7 @@ def add_time_domain_noise(fids, noise_level=0.00005):
     return fids
 
 
-def add_spur_echo_artifact(fids, time, amp=None, cs=None, phase=None, t_echo=None, cf_ppm=4.65, lf=127, locs=None, num_trans=None, cluster=False, echo=False):  
+def add_spur_echo_artifact(fids, time, amp=None, cs=None, phase=None, t_echo=None, t2=None, cf_ppm=4.65, lf=127.7*10**6, locs=None, num_trans=None, cluster=False, echo=False):  
     '''
     To add a spurious echo artifact to a select number of transients
     (Adapted from Berrington et al. 2021)
@@ -40,9 +39,10 @@ def add_spur_echo_artifact(fids, time, amp=None, cs=None, phase=None, t_echo=Non
                 amp (list of floats): amplitude of spurious echo artifact (earlier start time will increase amp, longer echo will create wider echo)
                 cs (list of floats): chemical shift in ppm
                 phase (list of floats): phase of artifact in radians
-                t_echo (list of floats): fraction of time of the total FID in ms
+                t_echo (list of floats): is the time where the echo reaches its maximum value
+                t2 (list of floats): is the transverse decay time of the echo
                 cf_ppm (integer/float): center frequency in ppm (default is 4.65 ppm)
-                lf (int/float): larmor frequency in MHz (default is 127 MHz)
+                lf (int/float): larmor frequency in Hz (default is 127 MHz)
                 locs (list of integers): list of transient numbers affected by spurious echoes
                 num_trans (integer): number of spurious echo artifacts in scan
                 cluster (boolean): indicates whether affected transients will be consecutive (designated by True)
@@ -51,7 +51,6 @@ def add_spur_echo_artifact(fids, time, amp=None, cs=None, phase=None, t_echo=Non
                 locs (list of integers): list of transient numbers affected by spurious echoes
     '''
     func_def = []
-    t_all = np.max(time, axis=0)
 
     # check for user vs. default values
     if locs is None:
@@ -74,25 +73,30 @@ def add_spur_echo_artifact(fids, time, amp=None, cs=None, phase=None, t_echo=Non
     
     # other params
     if phase is None or len(phase)!=num_trans:
-        phase = np.random.uniform(0.1, 1.9, size=num_trans)*math.pi
+        phase = np.random.uniform(0.1, 1.9, size=num_trans)*np.pi
     func_def.append(f'Phases: {phase}')
 
     if amp is None or len(amp)!=num_trans:
-        amp = np.random.uniform(50, 150, size=num_trans)
+        amp = np.random.uniform((5*10**-7), (25*10**-6), size=num_trans)
     func_def.append(f'Amplitudes: {amp},')
     
     if t_echo is None or len(t_echo)!=num_trans:
-        t_echo = np.random.uniform(0.1, 0.9, size=num_trans)
-    func_def.append(f'Time Fraction: {t_echo},')
+        t_echo = np.random.uniform(0.1, 0.9, size=num_trans) * np.max(time, axis=0)
+    else:
+        t_echo = t_echo * np.max(time, axis=0).repeat(len(t_echo))
+    func_def.append(f'Echo Times: {t_echo},')
+
+    if t2 is None or len(t2)!=num_trans:
+        t2 = np.random.uniform(10, 50, size=num_trans)
+    func_def.append(f'Transverse Relaxation Times: {t_echo},')
 
     if cs is None or len(cs)!=num_trans:
-        cs = np.random.uniform(0.0, 6.0, size=num_trans) 
-        func_def.append(f'Chemical Shifts: {cs}')
-    cs = [((cf_ppm - x)*2*math.pi*lf)  for x in cs]
+        cs = np.random.uniform(0, 8, size=num_trans) 
+    func_def.append(f'Chemical Shifts: {cs}')
 
     # insert spurious echo artifact(s)
     for ii in range(0, num_trans):
-        echo_artif = amp[ii] * np.exp(-abs(time-t_echo[ii])/t_all) * np.exp(1j*((1-cs[ii])*time+phase[ii]))
+        echo_artif = amp[ii] * np.exp(-abs(time-t_echo[ii])/t2[ii]) * np.exp(1j*((cs[ii]-cf_ppm)*(10**-6)*2*np.pi*time*lf)+phase[ii])
         fids[locs[ii]] = fids[locs[ii]] + echo_artif
         
     if echo is True:
@@ -139,11 +143,11 @@ def add_eddy_current_artifact(fids, time, amp=None, tc=None, locs=None, num_tran
 
     # other params
     if amp is None or len(amp)!=num_trans:
-        amp = np.random.uniform(1, 12, size=num_trans)
+        amp = np.random.uniform(8, 20, size=num_trans)
     func_def.append(f'Amplitudes: {amp}')
 
     if tc is None or len(tc)!=num_trans:      
-        tc = np.random.uniform(0.001, 0.30, size=num_trans)
+        tc = np.random.uniform((1*10**-4), 0.03, size=num_trans)
     func_def.append(f'Time Constants: {tc}')
 
     # calculate / expand params for eddy current artifact(s)
@@ -152,7 +156,7 @@ def add_eddy_current_artifact(fids, time, amp=None, tc=None, locs=None, num_tran
     time = time[np.newaxis, :].repeat(num_trans, axis=0)
 
     # insert eddy current artifact(s)
-    fids[locs, :] = fids[locs, :] * (np.exp(-1j * time * (amp * np.exp(-time / tc)) * 2 * math.pi))
+    fids[locs, :] = fids[locs, :] * (np.exp(-1j * time * (amp * np.exp(-time / tc)) * 2 * np.pi))
     
     if echo is True:
         print(f'Non-user defined parameters for "add_eddy_current_artifact": {func_def}')
@@ -160,7 +164,7 @@ def add_eddy_current_artifact(fids, time, amp=None, tc=None, locs=None, num_tran
     return fids, np.sort(locs)
 
 
-def add_nuisance_peak(fids, time, peak_profile, cf_ppm=4.65, lf=127, locs=None, num_trans=None, cluster=False, echo=False):
+def add_nuisance_peak(fids, time, peak_profile, cf_ppm=4.65, lf=127.7*10**6, locs=None, num_trans=None, cluster=False, echo=False):
     '''
     Design the shape of and add a nuisance peak (i.e. lipid peak) to the spectrum
     :param:     fids (complex floats): free induction decay values of shape [num_samples, spec_points]
@@ -173,7 +177,7 @@ def add_nuisance_peak(fids, time, peak_profile, cf_ppm=4.65, lf=127, locs=None, 
                     - res_freq (list of floats): location (center) of each multiplet in ppm (will follow same order as amp)
                     - edited (float): indicates the percent difference of the amplitude from ON to OFF (between 0.01 - 1.99, where 1 indicates no difference) 
                 cf_ppm (integer/float): center frequency in ppm (default is 4.65 ppm)
-                lf (integer/float): larmor frequency in Mhz (default is 127 MHz)
+                lf (integer/float): larmor frequency in Hz (default is 127 MHz)
                 locs (list of integers): list of transient numbers affected by nuisance peaks
                 num_trans (integer): number of nuisance peaks artifacts in scan
                 cluster (boolean): indicates whether affected transients will be consecutive (designated by True)
@@ -212,7 +216,7 @@ def add_nuisance_peak(fids, time, peak_profile, cf_ppm=4.65, lf=127, locs=None, 
 
     # amplitude of the peak
     if peak_profile["amp"] is None:
-        amp = np.random.uniform(0.000005, 0.0002, size=num_trans)
+        amp = np.random.uniform((5*10**-6), (2*10**-4), size=num_trans)
     elif len(peak_profile["amp"]) == 1:
         amp = np.repeat(peak_profile["amp"], repeats=num_trans)
     else:
@@ -235,15 +239,15 @@ def add_nuisance_peak(fids, time, peak_profile, cf_ppm=4.65, lf=127, locs=None, 
 
     # peak frequency
     if peak_profile["res_freq"] is None:
-        peak_profile["res_freq"] = np.random.uniform(0, 7, size=num_trans)
+        peak_profile["res_freq"] = np.random.uniform(0, 8, size=num_trans)
     elif len(peak_profile["res_freq"]) == 1:
         peak_profile["res_freq"] = np.repeat(peak_profile["res_freq"], repeats=num_trans).tolist()
-    res_freqs = np.array([(x-cf_ppm)*lf for x in peak_profile["res_freq"]])
-    func_def.append(f'Peak Locations: {res_freqs}')
+    cs = np.array(peak_profile["res_freq"])
+    func_def.append(f'Peak Locations: {cs}')
 
     # Peak Phase      
     if peak_profile["phase"] is None:
-        phase = np.random.uniform(0, 2*math.pi, size=num_trans)
+        phase = np.random.uniform(0, 2 * np.pi, size=num_trans)
     elif len(peak_profile["phase"]) == 1:
         phase = np.repeat(peak_profile["phase"], repeats=num_trans)
     else:
@@ -254,21 +258,21 @@ def add_nuisance_peak(fids, time, peak_profile, cf_ppm=4.65, lf=127, locs=None, 
     trans = 0
     for trans_loc in locs:
         if peak_profile["peak_type"] == 'G':
-            T_2 = 2 * (1 / (width[trans] * lf * math.pi))
-            M_0 = (dt * amp[trans]) / (T_2 * np.sqrt(math.pi/4))
-            peak_shape = M_0 * np.exp(1j*(2 * math.pi * res_freqs[trans] * time + phase[trans])) * np.exp(-(time**2)/(T_2**2))
+            T_2 = 2 * (1 / (width[trans] * (10**-6) * lf * np.pi))
+            M_0 = (dt * amp[trans]) / (T_2 * np.sqrt(np.pi/4))
+            peak_shape = M_0 * np.exp(1j*(((cs[trans] - cf_ppm) * (10**-6) * lf * 2 * np.pi * time) + phase[trans])) * np.exp(-(time**2)/(T_2**2))
         elif peak_profile["peak_type"] == 'L':
-            T_2 = 1 / (width[trans] * lf * math.pi)
+            T_2 = 1 / (width[trans] * (10**-6) * lf * np.pi)
             M_0 = dt * amp[trans] / T_2
-            peak_shape = M_0 * np.exp(1j*(2 * math.pi * res_freqs[trans] * time + phase[trans])) * np.exp(-time/T_2)
+            peak_shape = M_0 * np.exp(1j*(((cs[trans] - cf_ppm) * (10**-6) * lf * 2 * np.pi * time) + phase[trans])) * np.exp(-time/T_2)
         else:
-            T_2_G = 2 * (1 / (width[trans] * lf * math.pi))
-            M_0_G = (dt * amp[trans]) / (T_2_G * np.sqrt(math.pi/4))
-            T_2_L = 1 / (width[trans] * lf * math.pi)
+            T_2_G = 2 * (1 / (width[trans] * (10**-6) * lf * np.pi))
+            M_0_G = (dt * amp[trans]) / (T_2_G * np.sqrt(np.pi/4))
+            T_2_L = 1 / (width[trans] * (10**-6) * lf * np.pi)
             M_0_L = dt * amp[trans] / T_2_L
             frac = np.random.uniform(0.1, 0.9)          # fraction attributed to "G" vs. "L" (variable eta)
-            peak_time_gauss = M_0_G * np.exp(1j*(2 * math.pi * res_freqs[trans] * time + phase[trans])) * np.exp(-(time**2)/(T_2_G**2))
-            peak_time_lorentz = M_0_L * np.exp(1j*(2 * math.pi * res_freqs[trans] * time + phase[trans])) * np.exp(-time/T_2_L)
+            peak_time_gauss = M_0_G * np.exp(1j*(((cs[trans] - cf_ppm) * (10**-6) * lf * 2 * np.pi * time) + phase[trans])) * np.exp(-(time**2)/(T_2_G**2))
+            peak_time_lorentz = M_0_L * np.exp(1j*(((cs[trans] - cf_ppm) * (10**-6) * lf * 2 * np.pi * time) + phase[trans])) * np.exp(-time/T_2_L)
             peak_shape = (peak_time_gauss*frac) + ((1-frac)*peak_time_lorentz)
         trans+=1
         fids[trans_loc, :] = fids[trans_loc, :] + peak_shape
@@ -344,7 +348,7 @@ def add_baseline(fids, ppm, base_profile, locs=None, num_trans=None, cluster=Non
 
         # variation of each baseline within the set
         if base_profile["base_var"] is None:
-            base_profile["base_var"] = 0.0001
+            base_profile["base_var"] = 1*10**-4
         base_var = np.random.normal(-1*base_profile["base_var"], base_profile["base_var"], size=(num_trans, num_bases))
         amp_bases = amp_bases*(1+base_var)
         func_def.append(f'Amplitude of Bases: {amp_bases}')
@@ -375,11 +379,11 @@ def add_baseline(fids, ppm, base_profile, locs=None, num_trans=None, cluster=Non
         for trans in locs:
             base_shapes = np.zeros(shape=(num_bases, len(ppm)))
             for bases in range(0, base_shapes.shape[0]):
-                phase = random.uniform(0, 2)*math.pi
+                phase = random.uniform(0, 2) * np.pi
                 if base_type == "SC":   # Sinc
-                    base_shapes[bases, :] = (amp_bases[trans_nbs, bases]*((np.sin(comp_bases[trans_nbs, bases]*ppm-phase))/(comp_bases[trans_nbs, bases]*ppm-phase))+slope_bases[trans_nbs, bases]*ppm)
+                    base_shapes[bases, :] = (amp_bases[trans_nbs, bases] * ((np.sin(comp_bases[trans_nbs, bases]*ppm-phase)) / (comp_bases[trans_nbs, bases]*ppm-phase)) + slope_bases[trans_nbs, bases]*ppm)
                 else:                   # Sine
-                    base_shapes[bases, :] = amp_bases[trans_nbs, bases] * np.sin(comp_bases[trans_nbs, bases]*ppm-phase)+(slope_bases[trans_nbs, bases]*ppm)
+                    base_shapes[bases, :] = amp_bases[trans_nbs, bases] * np.sin(comp_bases[trans_nbs, bases]*ppm-phase) + (slope_bases[trans_nbs, bases]*ppm)
             trans_nbs+=1
             
             # additional if spline fitted was selected (separate from spline baseline)
@@ -418,7 +422,7 @@ def add_baseline(fids, ppm, base_profile, locs=None, num_trans=None, cluster=Non
             # interpolate piece-wise spline, apply to ppm data, and insert into scan
             tck_vals = splrep(x_vals, y_vals)
             spline_base = (splev(ppm, tck_vals))
-            specs[trans, :] = (abs(specs[trans, :]) + spline_base) * np.exp(1j*np.angle(specs[trans, :]))
+            specs[trans, :] = (abs(specs[trans, :]) + spline_base) * np.exp(1j * np.angle(specs[trans, :]))
             num_bases += 1
 
     if echo is True:
@@ -432,7 +436,7 @@ def add_linebroad(fids, time, damp=None, locs=None, num_trans=None, cluster=Fals
     Add line broadening artifact
     :param:     fids (complex floats): free induction decay values of shape [num_samples, spec_points]
                 time (float): vector containing time values [spec_points] 
-                damp (list of floats): dampening coefficient representing the desired increase of the FWHM in Hz
+                damp (list of floats): line broadening factor in Hz (represents the desired increase of the FWHM in Hz)
                 locs (list of integers): list of transient numbers affected by line broadening
                 num_trans (integer): number of line broadening artifacts in scan
                 cluster (boolean): indicates whether affected transients will be consecutive (designated by True)
@@ -463,7 +467,7 @@ def add_linebroad(fids, time, damp=None, locs=None, num_trans=None, cluster=Fals
 
     # other params
     if damp is None or len(damp)!=num_trans:
-        damp = np.random.uniform(5, 50, size=num_trans)
+        damp = np.random.uniform(5, 20, size=num_trans)
     func_def.append(f'Lineshape Variance: {damp}')
 
     # calculate / expand params for line broadening artifact(s)
@@ -522,7 +526,7 @@ def add_freq_drift_linear(fids, time, freq_offset_var=None, freq_shift=None, sta
     time = time[np.newaxis, :].repeat(num_trans, axis=0)
 
     # insert frequency drift
-    fids[start_trans:end_trans, :] = fids[start_trans:end_trans, :]*np.exp(-1j*time*f_shift_linear*2*math.pi)
+    fids[start_trans:end_trans, :] = fids[start_trans:end_trans, :] * np.exp(-1j * time * f_shift_linear * 2 * np.pi)
     
     if echo is True:
         print(f'Non-user defined parameters for "add_freq_drift_linear": {func_def}')
@@ -566,7 +570,7 @@ def add_freq_shift(fids, time, freq_var=None, dist="N", locs=None, num_trans=Non
     func_def.append(f'Locations: {locs}')
 
     if freq_var is None:
-        freq_var = np.random.uniform(2, 20, size=1)
+        freq_var = np.random.uniform(1, 15, size=1)
     func_def.append(f'Frequency Shift Variance: {freq_var}')
 
     # calculate / expand params for frequency shifts
@@ -578,7 +582,7 @@ def add_freq_shift(fids, time, freq_var=None, dist="N", locs=None, num_trans=Non
     time = time[np.newaxis, :].repeat(num_trans, axis=0)
 
     # insert frequency shifts
-    fids[locs, :] = fids[locs, :] * np.exp(-1j * time * f_shift * 2 * math.pi)
+    fids[locs, :] = fids[locs, :] * np.exp(-1j * time * f_shift * 2 * np.pi)
 
     if echo is True:
         print(f'Non-user defined parameters for "add_freq_shift_random": {func_def}')
@@ -621,7 +625,7 @@ def add_zero_order_phase_shift(fids, phase_var=None, dist="N", locs=None, num_tr
     func_def.append(f'Locations: {locs}')
 
     if phase_var is None:
-        phase_var = np.random.uniform(5, 90, size=1)
+        phase_var = np.random.uniform(1, 90, size=1)
     func_def.append(f'Phase Shift Variance: {phase_var}')
 
     # calculate / expand params for phase shifts
@@ -631,7 +635,7 @@ def add_zero_order_phase_shift(fids, phase_var=None, dist="N", locs=None, num_tr
         p_noise = np.random.uniform(low=-abs(phase_var), high=phase_var, size=(num_trans, 1)).repeat(fids.shape[1], axis=1)
 
     # insert phase shifts
-    fids[locs, :] = fids[locs, :] * np.exp(-1j * p_noise * math.pi / 180)
+    fids[locs, :] = fids[locs, :] * np.exp(-1j * p_noise * np.pi / 180)
 
     if echo is True:
         print(f'Non-user defined parameters for "add_zero_order_phase_shift": {func_def}')
@@ -639,15 +643,15 @@ def add_zero_order_phase_shift(fids, phase_var=None, dist="N", locs=None, num_tr
     return fids, np.sort(locs)
 
 
-def add_first_order_phase_shift(fids, ppm, shift=None, dist="N", lf=127, cluster=False, locs=None, num_trans=None, echo=False):
+def add_first_order_phase_shift(fids, ppm, tshift=None, dist="N", lf=127.7*10**6, cluster=False, locs=None, num_trans=None, echo=False):
     '''
-    Add first order phase shifts
+    Add first order phase shifts (to frequency domain data)
     (Adapted from phase1 in FID-A (Simpson et al. 2017))
     :param:     fids (complex floats): free induction decay values of shape [num_samples, spec_points]
                 ppm (float): vector containing ppm values [spec_points] 
-                shift (float): time constant in ms used to calculate first order shifts
+                tshift (float): time constant in ms used to calculate first order shifts
                 dist (string): "N" indicates normal distribution (default) while "U" indicates a uniform distribution
-                lf (integer/float): larmor frequency in MHz (default 127 MHz)
+                lf (integer/float): larmor frequency in Hz (default 127 MHz)
                 cluster (boolean): indicates whether affected transients will be consecutive (designated by True)
                 locs (list of integers): list of transient numbers affected by phase shifts
                 num_trans (integer): number of phase shift artifacts in scan
@@ -656,6 +660,7 @@ def add_first_order_phase_shift(fids, ppm, shift=None, dist="N", lf=127, cluster
                 locs (list of integers): list of transient numbers affected by phase shifts
     '''
     func_def = []
+    specs = to_specs(fids)
 
     # check for user vs. default values
     if locs is None:
@@ -676,25 +681,24 @@ def add_first_order_phase_shift(fids, ppm, shift=None, dist="N", lf=127, cluster
         # default to user locations
         num_trans = len(locs)
 
-    if shift is None:
+    if tshift is None:
         if dist == "N":
-            shift = np.random.normal(0, 1, size=1)
+            tshift = np.random.normal(0, 1, size=1)
         else:
-            shift = np.random.uniform(0.001, 1, size=1)
-        func_def.append(f'Time shift: {shift}')
+            tshift = np.random.uniform((1*10**-3), 1, size=1)
+        func_def.append(f'Time shift: {tshift}')
 
     # calculate frequency from ppm
-    freq = (ppm-np.median(ppm))*lf
+    freq = (ppm-np.median(ppm)) * lf
 
     # insert phase shifts
     for ii in locs:
-        p_noise = freq*shift*2*math.pi
-        fids[ii, :] = fids[ii, :] * np.exp(-1j * p_noise * math.pi / 180)
+        specs[ii, :] = specs[ii, :] * np.exp(-1j * freq * tshift * 2 * np.pi)
 
     if echo is True:
         print(f'Non-user defined parameters for "add_first_order_phase_shift": {func_def}')
 
-    return fids, np.sort(locs)
+    return to_fids(specs), np.sort(locs)
 
 
 ########################################################################################################################
@@ -714,7 +718,7 @@ def add_progressive_motion_artifact(fids, time, num_trans=None, echo=False):
     slope_var=15                                                # overall frequency drift to accomplish between first and last transient
     start_trans=int(fids.shape[0]/4)                            # number of transient to start at
 
-    if num_trans is None:                              # number of affected transients
+    if num_trans is None:                                       # number of affected transients
         num_trans = np.random.uniform(5, fids.shape[0]-start_trans)
 
     fids, locs = add_freq_drift_linear(fids=fids, time=time, freq_offset_var=off_var, freq_shift=slope_var, start_trans=start_trans, num_trans=num_trans, echo=echo)

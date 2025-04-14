@@ -10,7 +10,7 @@ authors:
 - family-names: "Harris"
   given-names: "Ashley D."
 title: "SMART MRS Toolbox "
-version: 2
+version: 2.1
 doi: 10.1101/2024.09.19.612894
 date-released: 2024-09-25
 url: "https://github.com/HarrisBrainLab/SMART_MRS"

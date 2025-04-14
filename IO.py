@@ -12,6 +12,7 @@ This file can also be imported as a module and contains the following functions:
     * return_FIDA_mat_data - returns FIDs to an existing FID-A .mat structure format
     * get_nifti_mrs_data - gets FIDs, time and ppm from a nifti-MRS format
     * return_nifti_mrs_data - returns FIDs to an nifti-MRS format
+[last upd. 2025-01]
 """
 
 # import Python packages

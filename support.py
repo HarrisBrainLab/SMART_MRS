@@ -14,6 +14,7 @@ This file can also be imported as a module and contains the following functions:
     * undo_interleave - return two subspectra ('ON' and 'OFF') from a single FIDs matrix
     * scale - normalize the Specs data (return as FIDs)
     * undo_scale - return the non-normalized Specs data (return as FIDs)
+[last upd. 2025-01]
 """
 
 # import Python packages

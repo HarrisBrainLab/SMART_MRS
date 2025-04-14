@@ -9,7 +9,7 @@ Use of SMART_MRS requires citation. Please see either CITATION.cff or GitHub's "
 For further information on the toolbox, please see [SMART_MRS Preprint](https://www.biorxiv.org/content/10.1101/2024.09.19.612894v1)
 
 ## Updates
-Current version is 2.0. Previous version 1.0.
+Current version is 2.1. Previous version 2.0.
 See CHANGES.md for more details.
 
 
@@ -127,7 +127,6 @@ plt.plot(ppm[::-1], (SMART_MRS.support.to_specs(fids)[0, :]-SMART_MRS.support.to
 plt.xlabel('ppm')
 plt.xlim(0, 6)
 plt.gca().invert_xaxis()
-plt.savefig("NuisancePeakExample.png") 
 plt.show()
 
 # Applied Functions example add_disruptive_motion_artifact() - returns FIDs and artifact locations within dataset
@@ -151,7 +150,6 @@ plt.plot(ppm[::-1], (SMART_MRS.support.to_specs(fids)[2, :]-SMART_MRS.support.to
 plt.xlabel('ppm')
 plt.xlim(0, 6)
 plt.gca().invert_xaxis()
-plt.savefig("DisruptiveMotionExample.png") 
 plt.show()
 
 # Save Fids with Artifacts as original data type
@@ -160,5 +158,9 @@ fids = SMART_MRS.support.undo_scale(fids=fids, scale_fact=nifti_scale)
 SMART_MRS.IO.return_nifti_mrs_data(dir_nifti=f"{DIR}jdifference_nifti_SMART_MRS_EX.nii.gz", fids=fids, edited=True)
 ```
 The above code generates the following plots:
-NuisancePeakExample.png
-DisruptiveMotionExample.png
+__Nuisance Peak Example__
+![alt text](https://github.com/HarrisBrainLab/SMART_MRS/NuisancePeakExample.png?raw=true)
+
+
+__Disruptive Motion Example__
+![alt text](https://github.com/HarrisBrainLab/SMART_MRS/DisruptiveMotionExample.png?raw=true)
