@@ -6,7 +6,7 @@ MIT License, Copyright (c) 2024 HarrisBrainLab.
 
 Use of SMART_MRS requires citation. Please see either CITATION.cff or GitHub's "Cite this repository".
 
-For further information on the toolbox, please see [SMART_MRS Preprint](https://www.biorxiv.org/content/10.1101/2024.09.19.612894v1)
+For further information on the toolbox, please see [SMART MRS Pub]([10.1002/mrm.30597](https://pubmed.ncbi.nlm.nih.gov/40485116/))
 
 ## Updates
 Current version is 2.1. Previous version 2.0.
@@ -163,4 +163,5 @@ __Nuisance Peak Example__
 
 
 __Disruptive Motion Example__
+
 ![alt text](https://github.com/HarrisBrainLab/SMART_MRS/DisruptiveMotionExample.png?raw=true)
